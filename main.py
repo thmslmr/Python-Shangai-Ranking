@@ -54,7 +54,6 @@ class ShangaiRanking :
                 university[key] = cases_datas[i].text
                 if 'Country' in key :
                     country_src_img = cases_datas[2].find('img')['src']
-                    print(country_src_img)
                     split_src = country_src_img.split('/')
                     country_name = split_src[ len(split_src) - 1 ].split('.')[0]
                     university[key] = country_name
