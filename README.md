@@ -1,12 +1,12 @@
 # Python-Shangai-Ranking
 
-### Dependencies
-----------------
+Dependencies
+------------
 
     pip install beautifulsoup4
 
-### Example
------------
+Example
+-------
 
     ranking = ShangaiRanking()
     world_current_ranking = ranking.getRanking()
