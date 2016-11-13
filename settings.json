@@ -1,0 +1,15 @@
+{
+    "domain" : "http://www.shanghairanking.com/",
+    "subjects" : ["Mathematics" , "Physics", "CS", "EcoBus", "Chemistry"],
+    "board_subjects" : ["SCI", "ENG", "LIFE", "MED", "SOC"],
+
+    "pattern_world_ranking" : "<domain>ARWU<year>.html",
+    "pattern_subject_ranking" : "<domain>Subject<subject><year>.html",
+    "pattern_search_university" : "<domain>Search.jsp?universitySearch=<query>",
+    "pattern_university" : "<domain>World-University-Rankings/<university>.html",
+
+    "ranking_table_id" : "UniversityRanking",
+    "ranking_tr_class" : "bgfd",
+    "search_tr_class" : "bgf5",
+    "univrank_tr_class" : "bgfd"
+}
