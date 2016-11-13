@@ -40,7 +40,9 @@ class ShangaiRanking :
         return output
 
     def getUniversityRanking(self, university) :
-        output = []
+        years = []
+        ranks = []
+
         pattern_url = self.settings['pattern_university']
         url = pattern_url.replace('<domain>', self.settings['domain']).replace('<university>', university.replace(' ', '-') )
 
@@ -51,10 +53,21 @@ class ShangaiRanking :
 
         soupe = bs4.BeautifulSoup(html, 'html.parser')
         table = soupe.findAll('table')[1]
-        tds = table.findAll('td')
-        rank = tds[len(tds)-1].text
 
-        return rank
+        ths = table.findAll('th')
+        for th in ths :
+            years.append(th.text)
+        del years[0]
+
+        tds = table.findAll('td')
+        for td in tds :
+            if td.text == '/' :
+                ranks.append(None)
+            else :
+                ranks.append(td.text)
+        del ranks[0]
+
+        return dict(zip(years, ranks))
 
     def getGlobalRanking(self, year) :
 
