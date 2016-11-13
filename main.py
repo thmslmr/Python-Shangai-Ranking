@@ -29,6 +29,8 @@ class ShangaiRanking :
 
         if 'subject' in params :
             output = self.getSubjectRanking(params['subject'], params['year'])
+        elif 'university' in params:
+            output = self.getUniversityRanking(params['university'])
         else :
             output = self.getGlobalRanking(params['year'])
 
@@ -36,6 +38,23 @@ class ShangaiRanking :
             self.save(output)
 
         return output
+
+    def getUniversityRanking(self, university) :
+        output = []
+        pattern_url = self.settings['pattern_university']
+        url = pattern_url.replace('<domain>', self.settings['domain']).replace('<university>', university.replace(' ', '-') )
+
+        try :
+            html = ur.urlopen(url).read()
+        except ur.HTTPError :
+            raise ValueError('HTTP Error \n This university is probably not found. Make sure this university is in the ranking with search() method')
+
+        soupe = bs4.BeautifulSoup(html, 'html.parser')
+        table = soupe.findAll('table')[1]
+        tds = table.findAll('td')
+        rank = tds[len(tds)-1].text
+
+        return rank
 
     def getGlobalRanking(self, year) :
 
