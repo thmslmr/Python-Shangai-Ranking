@@ -19,17 +19,20 @@ class ShangaiRanking :
             settings = json.load(file)
         return settings
 
-    def getRanking(self, year = date.today().year, subject = None, save = False) :
+    def getRanking(self, params = {}) :
         output = []
         domain = self.settings['domain']
         subjects = self.settings['subjects']
 
-        if subject :
-            output = self.getSubjectRanking(subject, year)
-        else :
-            output = self.getGlobalRanking(year)
+        if 'year' not in params :
+            params['year'] = date.today().year
 
-        if save :
+        if 'subject' in params :
+            output = self.getSubjectRanking(params['subject'], params['year'])
+        else :
+            output = self.getGlobalRanking(params['year'])
+
+        if 'save' in params and params['save'] == True:
             self.save(output)
 
         return output
@@ -95,7 +98,6 @@ class ShangaiRanking :
                     split_src = country_src_img.split('/')
                     country_name = split_src[ len(split_src) - 1 ].split('.')[0]
                     university[key] = country_name
-            print(university)
             output.append(university)
 
         return output
