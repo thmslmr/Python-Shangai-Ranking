@@ -8,9 +8,9 @@ class ShangaiRanking:
 
     def __init__(self):
         """ Init Shangai Ranking """
-        self.__set_settings()
+        self.settings = self.__fetch_settings()
 
-    def __set_settings(self):
+    def __fetch_settings(self):
         """ Get settings from settings.json """
         try:
             with open('settings.json', encoding='utf8') as file:
@@ -21,7 +21,7 @@ class ShangaiRanking:
         if not settings:
             raise Exception('Settings file must be filled')
 
-        self.settings = settings
+        return settings
 
     def __get_settings(self, keys=None):
         """ Get settings for given keys or all"""
