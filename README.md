@@ -1,16 +1,18 @@
-# Python-Shangai-Ranking
+# Shangai Ranking scraper
 
-[Shangai Ranking](http://www.shanghairanking.com/)
+**BeautifulSoup scraper to deal with the [Shangai Ranking](http://www.shanghairanking.com/).**
 
 Dependencies
-------------
+---
+```bash
+pip install beautifulsoup4
+```
 
-    pip install beautifulsoup4
-
-Example
--------
+Examples of use
+---
 ```python
 ranking = ShangaiRanking()
+
 # Get the current Shangai Ranking
 world_current_ranking = ranking.get()
 
