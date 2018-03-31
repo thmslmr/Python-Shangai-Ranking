@@ -1,163 +1,190 @@
-import bs4, json
+import bs4
+import json
 import urllib.request as ur
 from datetime import date
 
-class ShangaiRanking :
 
-    settings_file = 'settings.json'
-    settings = None
+class ShangaiRanking:
 
-    def __init__(self) :
-        self.settings = self.getSettings()
+    def __init__(self):
+        """ Init Shangai Ranking """
+        self.set_settings()
 
-    def save(self, datas, output_file='output.json') :
-        with open(output_file, 'w', encoding='utf8') as file :
-            json.dump(datas, file, ensure_ascii=False)
+    def set_settings(self):
+        """ Get settings from settings.json """
+        try:
+            with open('settings.json', encoding='utf8') as file:
+                settings = json.load(file)
+        except FileNotFoundError as e:
+            raise Exception('Settings file must be provided')
 
-    def getSettings(self) :
-        with open(self.settings_file , encoding='utf8') as file :
-            settings = json.load(file)
-        return settings
+        if not settings:
+            raise Exception('Settings file must be filled')
 
-    def getRanking(self, params = {}) :
-        output = []
-        domain = self.settings['domain']
-        subjects = self.settings['subjects']
+        self.settings = settings
 
-        if 'year' not in params :
-            params['year'] = date.today().year
+    def get_settings(self, keys=None):
+        """ Get settings for given keys or all"""
+        return (self.settings[key] for key in keys or self.settings.keys())
 
-        if 'subject' in params :
-            output = self.getSubjectRanking(params['subject'], params['year'])
-        elif 'university' in params:
-            output = self.getUniversityRanking(params['university'])
-        else :
-            output = self.getGlobalRanking(params['year'])
+    def get_url(self, pattern, keys):
+        """ Get url from pattern and match keys """
+        url = pattern
 
-        if 'save' in params and params['save'] == True:
-            self.save(output)
+        for key in keys:
+            url = url.replace('<{key}>', keys[key])
 
-        return output
+        return url
 
-    def getUniversityRanking(self, university) :
-        output = {}
-
-        pattern_url = self.settings['pattern_university']
-        url = pattern_url.replace('<domain>', self.settings['domain']).replace('<university>', university.replace(' ', '-') )
-
-        try :
+    def get_bsoupe(self, url):
+        """ Get soupe from html of a given url """
+        try:
             html = ur.urlopen(url).read()
-        except ur.HTTPError :
-            raise ValueError('HTTP Error \n This university is probably not found. Make sure this university is in the ranking with search() method')
+        except ur.HTTPError:
+            raise Exception('HTTP Error, page not found')
 
-        soupe = bs4.BeautifulSoup(html, 'html.parser')
-        tables = soupe.findAll('table')
-        del tables[0]
+        return bs4.BeautifulSoup(html, 'html.parser')
 
-        for table in tables :
-            years = []
-
-            for th in table.findAll('th') :
-                years.append(th.text)
-            del years[0]
-
-            for tr in table.findAll('tr')[1:] :
-                ranks = []
-                print(tr)
-                for td in tr.findAll('td') :
-                    if td.text == '/' :
-                        ranks.append(None)
-                    else :
-                        ranks.append(td.text)
-                print(ranks)
-                key = ranks[0].replace(' ', '_')
-                del ranks[0]
-                output[key] = dict(zip(years, ranks))
-
-        return output
-
-    def getGlobalRanking(self, year) :
-
-        pattern_url = self.settings['pattern_world_ranking']
-        url = pattern_url.replace('<domain>', self.settings['domain']).replace('<year>', str(year) )
-
-        try :
-            html = ur.urlopen(url).read()
-        except ur.HTTPError :
-            raise ValueError('HTTP Error, The current year or the specified one is probably not available.')
-
-        soupe = bs4.BeautifulSoup(html, 'html.parser')
-        table = soupe.find('table', {'id' :'UniversityRanking'})
-        return self.getRankingWithTable(table, self.settings['ranking_tr_class'])
-
-    def getSubjectRanking(self, subject, year):
-
-        if subject not in self.settings['subjects'] :
-            raise ValueError('This subject does not exist')
-
-        url_pattern = self.settings['pattern_subject_ranking']
-        url = url_pattern.replace('<domain>', self.settings['domain']).replace('<subject>', subject).replace('<year>', str(year))
-
-        try :
-            html = ur.urlopen(url).read()
-        except ur.HTTPError :
-            raise ValueError('HTTP Error, The current year or the specified one is probably not available.')
-
-        soupe = bs4.BeautifulSoup(html, 'html.parser')
-        table = soupe.find('table', {'id' : self.settings['ranking_table_id']})
-        return self.getRankingWithTable(table, self.settings['ranking_tr_class'])
-
-    def getRankingWithTable(self, table, target_class) :
+    def get_ranking_from_table(self, table, target_class):
         output = []
         legend = []
         raw_legend = table.find('tr')
 
         for case_legend in raw_legend.findAll('th'):
-            if case_legend.find('select') :
+            if case_legend.find('select'):
                 options = case_legend.findAll('option')
-                for option in options :
+                for option in options:
                     legend.append(option.text)
-            else :
+            else:
                 text = case_legend.text.replace('\n', '').strip()
                 legend.append(' '.join(text.split()))
 
-        raws_datas = table.findAll('tr', {'class' : target_class})
+        raws_datas = table.findAll('tr', {'class': target_class})
 
-        for raw in raws_datas :
+        for raw in raws_datas:
             university = {}
             cases_datas = raw.findAll('td')
 
-            for i, key in enumerate(legend) :
-                try :
+            for i, key in enumerate(legend):
+                try:
                     university[key] = cases_datas[i].text
-                except IndexError :
+                except IndexError:
                     pass
-                if 'Country' in key :
+
+                if 'Country' in key:
                     country_src_img = cases_datas[2].find('img')['src']
                     split_src = country_src_img.split('/')
-                    country_name = split_src[ len(split_src) - 1 ].split('.')[0]
+                    country_name = split_src[len(split_src) - 1].split('.')[0]
                     university[key] = country_name
+
             output.append(university)
 
         return output
 
-    def search(self, query) :
-        if not query :
-            raise ValueError('Search query must be specified')
+    def get(self,
+            subject=None,
+            university=None,
+            year=date.today().year):
+        """ Main function """
+        if subject:
+            output = self.get_subject_ranking(subject, str(year))
+        elif university:
+            output = self.get_university_ranking(university)
+        else:
+            output = self.get_ranking(str(year))
+
+        return output
+
+    def get_university_ranking(self, univ):
+        """ Get ranking of a given univeristy """
+        (url_pattern, domain, tr_class) = self.get_settings([
+            'pattern_university',
+            'domain',
+            'ranking_tr_class'])
+
+        if not univ:
+            raise Exception('University name must be provided.')
+
+        univ = univ.replace(' ', '-')
+        url = self.get_url(url_pattern, {'domain': domain, 'univeristy': univ})
+        soupe = self.get_bsoupe(url)
+        tables = soupe.findAll('table')[1:]
+
+        output = {}
+        for table in tables:
+            years = []
+
+            for th in table.findAll('th'):
+                years.append(th.text)
+            years = years[1:]
+
+            for tr in table.findAll('tr')[1:]:
+                ranks = []
+                for td in tr.findAll('td'):
+                    if td.text == '/':
+                        ranks.append(None)
+                    else:
+                        ranks.append(td.text)
+                key = ranks[0].replace(' ', '_')
+                ranks = ranks[1:]
+                output[key] = dict(zip(years, ranks))
+
+        return output
+
+    def get_ranking(self, year):
+        """ Get global Shangai Ranking """
+        (url_pattern, domain, tr_class) = self.get_settings([
+            'pattern_world_ranking',
+            'domain',
+            'ranking_tr_class'])
+
+        if not year:
+            raise Exception('Year must be provided.')
+
+        url = self.get_url(url_pattern, {'domain': domain, 'year': year})
+        soupe = self.get_bsoupe(url)
+        table = soupe.find('table', {'id': 'UniversityRanking'})
+
+        return self.get_ranking_from_table(table, tr_class)
+
+    def get_subject_ranking(self, subject, year):
+        """ Get Shangai Ranking for a given subject """
+        (subjects, url_pattern,
+         domain, tr_class, table_id) = self.get_settings([
+            'subjects',
+            'pattern_subject_ranking',
+            'domain',
+            'ranking_tr_class',
+            'ranking_table_id'])
+
+        if subject not in subjects:
+            raise Exception('This subject does not exist')
+
+        url = self.get_url(url_pattern, {'domain': domain, 'subject': subject,
+                                         'year': year})
+        soupe = self.get_bsoupe(url)
+        table = soupe.find('table', {'id': table_id})
+
+        return self.get_ranking_from_table(table, tr_class)
+
+    def search(self, query):
+        """ Search ranking of a given univeristy """
+        (url_pattern, domain, tr_class) = self.get_settings([
+            'pattern_search_university',
+            'domain',
+            'search_tr_class'])
+
+        if not query:
+            raise Exception('Search query must be provided.')
+
+        query = query.replace(' ', '+')
+        url = self.get_url(url_pattern, {'domain': domain, 'query': query})
+        soupe = self.get_bsoupe(url)
+        raws = soupe.findAll('tr', {'class': tr_class})
 
         result = []
-        url_pattern = self.settings['pattern_search_university']
-        url = url_pattern.replace('<domain>', self.settings['domain']).replace('<query>', query.replace(' ', '+'))
-
-        try :
-            html = ur.urlopen(url).read()
-        except ur.HTTPError :
-            raise ValueError('HTTP Error, page not found')
-
-        soupe = bs4.BeautifulSoup(html, 'html.parser')
-        raws = soupe.findAll('tr', {'class' : self.settings['search_tr_class']})
-        if(len(raws) > 0 ):
-            for raw in raws :
-                result.append( raw.findAll('td')[0].text )
+        if raws:
+            for raw in raws:
+                result.append(raw.findAll('td')[0].text)
 
         return result
